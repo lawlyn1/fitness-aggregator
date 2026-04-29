@@ -44,4 +44,44 @@ if mf_upload:
 
         with colC:
             st.subheader("Metabolic Response")
-            scatter
+            scatter = alt.Chart(df.dropna(subset=['Steps_MA7', 'Expenditure_MA7'])).mark_circle(size=60).encode(
+                x=alt.X('Steps_MA7:Q', title='Steps (7-Day MA)', scale=alt.Scale(zero=False)),
+                y=alt.Y('Expenditure_MA7:Q', title='Expenditure (7-Day MA)', scale=alt.Scale(zero=False)),
+                tooltip=['Date', 'Steps_MA7', 'Expenditure_MA7']
+            )
+            trendline = scatter.transform_regression('Steps_MA7', 'Expenditure_MA7').mark_line(color='red')
+            st.altair_chart(scatter + trendline, width='stretch')
+
+        with colD:
+            st.subheader("Lag Analysis: Day T Input vs T+1 Scale Weight Delta")
+            
+            lag_options = [col for col in ['Sodium (mg)', 'Fiber (g)', 'Carbs (g)', 'Calories (kcal)', 'Water (g)'] if col in df.columns]
+            
+            if 'Defecation' in df.columns and not df['Defecation'].isna().all():
+                lag_options.append('Defecation')
+            
+            if lag_options:
+                selected_var = st.selectbox("Independent Variable (Day T)", lag_options)
+                
+                if selected_var == 'Defecation':
+                    chart_lag = alt.Chart(df.dropna(subset=[selected_var, 'Daily_Scale_Weight_Delta'])).mark_boxplot().encode(
+                        x=alt.X(f'{selected_var}:O', title='Defecation (1=Yes, 0=No)'),
+                        y=alt.Y('Daily_Scale_Weight_Delta:Q', title='Scale Weight Delta kg (T+1 - T)')
+                    )
+                else:
+                    chart_lag = alt.Chart(df.dropna(subset=[selected_var, 'Daily_Scale_Weight_Delta'])).mark_circle(size=60).encode(
+                        x=alt.X(f'{selected_var}:Q', title=f'{selected_var} (Day T)', scale=alt.Scale(zero=False)),
+                        y=alt.Y('Daily_Scale_Weight_Delta:Q', title='Scale Weight Delta kg (T+1 - T)'),
+                        tooltip=['Date', selected_var, 'Daily_Scale_Weight_Delta']
+                    )
+                    chart_lag += chart_lag.transform_regression(selected_var, 'Daily_Scale_Weight_Delta').mark_line(color='red')
+                
+                st.altair_chart(chart_lag, width='stretch')
+            else:
+                st.warning("No lag variables detected. Ensure Micros sheet is present.")
+        
+    except Exception as e:
+        st.error(f"Pipeline failure: {e}")
+        st.write("Please ensure the uploaded XLSX is a full MacroFactor export.")
+else:
+    st.info("Awaiting MacroFactor payload.")
