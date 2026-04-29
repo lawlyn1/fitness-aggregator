@@ -21,7 +21,7 @@ def process_data(mf_file, manual_file=None):
     df_scale_weight = clean_and_normalize(pd.read_excel(mf_file, sheet_name="Scale Weight"))
     
     # Select specific micros to avoid bloat, but ensure we have the main culprits for water retention/digestion
-    micros_subset = df_micros[['Date', 'Sodium (mg)', 'Fiber (g)', 'Water (g)', 'Carbs (g)']].copy()
+   micros_subset = df_micros[['Date', 'Sodium (mg)', 'Fiber (g)', 'Water (g)']].copy()
     
     # Merge pipeline
     merged_df = df_nutrition.merge(df_weight_trend, on='Date', how='outer') \
