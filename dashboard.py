@@ -79,6 +79,17 @@ if mf_upload:
                 st.altair_chart(chart_lag, width='stretch')
             else:
                 st.warning("No lag variables detected. Ensure Micros sheet is present.")
+
+        st.markdown("### Metabolic Adaptation")
+        metabolic_df = df.dropna(subset=['Weight (kg)', 'Relative_TDEE', 'Date']).copy()
+        metabolic_scatter = alt.Chart(metabolic_df).mark_circle(size=70).encode(
+            x=alt.X('Weight (kg):Q', title='Weight (kg)', scale=alt.Scale(zero=False)),
+            y=alt.Y('Relative_TDEE:Q', title='Relative TDEE (kcal/kg)', scale=alt.Scale(zero=False)),
+            color=alt.Color('Date:T', scale=alt.Scale(scheme='viridis'), title='Date'),
+            tooltip=['Date:T', 'Weight (kg):Q', 'Relative_TDEE:Q']
+        )
+        metabolic_regression = metabolic_scatter.transform_regression('Weight (kg)', 'Relative_TDEE').mark_line(color='black')
+        st.altair_chart(metabolic_scatter + metabolic_regression, width='stretch')
         
     except Exception as e:
         st.error(f"Pipeline failure: {e}")

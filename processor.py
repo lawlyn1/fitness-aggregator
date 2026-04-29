@@ -19,13 +19,14 @@ def process_data(mf_file, manual_file=None):
     # New detailed sheets
     df_micros = clean_and_normalize(pd.read_excel(mf_file, sheet_name="Micronutrients"))
     df_scale_weight = clean_and_normalize(pd.read_excel(mf_file, sheet_name="Scale Weight"))
+    df_weight = df_scale_weight[['Date', 'Weight (kg)']].copy()
     
     # Select specific micros to avoid bloat, but ensure we have the main culprits for water retention/digestion
     micros_subset = df_micros[['Date', 'Sodium (mg)', 'Fiber (g)', 'Water (g)']].copy()
     
     # Merge pipeline
     merged_df = df_nutrition.merge(df_weight_trend, on='Date', how='outer') \
-                            .merge(df_scale_weight[['Date', 'Weight (kg)']], on='Date', how='outer') \
+                            .merge(df_weight, on='Date', how='outer') \
                             .merge(df_expenditure, on='Date', how='outer') \
                             .merge(df_steps, on='Date', how='outer') \
                             .merge(micros_subset, on='Date', how='outer')
@@ -41,8 +42,12 @@ def process_data(mf_file, manual_file=None):
         merged_df['Defecation'] = pd.NA 
 
     # Clean up and filter
-    merged_df = merged_df.sort_values('Date').dropna(subset=['Expenditure'])
+    merged_df = merged_df.sort_values('Date')
+    merged_df['Weight (kg)'] = merged_df['Weight (kg)'].ffill()
+    merged_df = merged_df.dropna(subset=['Expenditure'])
     merged_df = merged_df[merged_df['Calories (kcal)'].notna() & (merged_df['Calories (kcal)'] > 0)].copy()
+    merged_df['Relative_TDEE'] = merged_df['Expenditure'] / merged_df['Weight (kg)']
+    merged_df['Date_Ordinal'] = pd.to_datetime(merged_df['Date']).map(pd.Timestamp.toordinal)
     
     # Moving Averages
     merged_df['Steps_MA7'] = merged_df['Total Steps'].rolling(window=7, min_periods=3).mean()
