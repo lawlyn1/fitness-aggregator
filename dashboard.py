@@ -560,12 +560,14 @@ else:
                                     "Exercise": exercise,
                                     "Status": status,
                                     "14-Day Change": f"{plateau_info['improvement']:+.2f} kg",
+                                    "% Change": f"{plateau_info['percent_improvement']:+.1f}%",
                                     "Trend": f"{plateau_info['slope']:.4f}"
                                 })
                         
                         if plateau_data:
                             plateau_df = pd.DataFrame(plateau_data)
                             st.dataframe(plateau_df, use_container_width=True, hide_index=True)
+                            st.caption("Percentage change shows relative improvement - a 1kg increase on a 10kg exercise (10%) is more significant than 1kg on a 100kg exercise (1%).")
                     
                     # Display all exercises summary
                     st.markdown("---")

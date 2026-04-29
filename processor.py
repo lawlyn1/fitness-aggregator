@@ -209,9 +209,13 @@ def detect_plateaus(exercise_df, window_days=14, min_improvement=0.0):
             else:
                 slope = 0
             
+            # Calculate percentage improvement
+            percent_improvement = (improvement / first_val * 100) if first_val > 0 else 0
+            
             plateau_results[exercise] = {
                 'is_plateau': is_plateau,
                 'improvement': improvement,
+                'percent_improvement': percent_improvement,
                 'slope': slope,
                 'first_value': first_val,
                 'last_value': last_val,
