@@ -147,6 +147,80 @@ def initialize_manual_baseline(current_weight, current_tdee, target_intake=1550,
         'avg_daily_sets_30d': 0.0,
     }
 
+def process_exercise_data(mf_file):
+    """Process individual exercise data for progression analysis"""
+    try:
+        # Try to load exercise sheets
+        df_heaviest = clean_and_normalize(pd.read_excel(mf_file, sheet_name="Exercises - Heaviest Weight"))
+        
+        # Get exercise names (all columns except Date)
+        exercise_cols = [col for col in df_heaviest.columns if col != 'Date']
+        
+        # Reshape to long format for easier analysis
+        exercise_long = []
+        for exercise in exercise_cols:
+            if exercise in df_heaviest.columns:
+                heaviest_series = df_heaviest[['Date', exercise]].copy()
+                heaviest_series.columns = ['Date', 'Value']
+                heaviest_series['Metric'] = 'Heaviest Weight'
+                heaviest_series['Exercise'] = exercise
+                exercise_long.append(heaviest_series)
+        
+        if exercise_long:
+            exercise_df = pd.concat(exercise_long, ignore_index=True)
+            exercise_df = exercise_df.dropna(subset=['Value'])
+            return exercise_df
+        else:
+            return None
+    except Exception as e:
+        print(f"Error processing exercise data: {e}")
+        return None
+
+
+def detect_plateaus(exercise_df, window_weeks=4, min_improvement=0.0):
+    """Detect plateaus in exercise progression"""
+    if exercise_df is None or exercise_df.empty:
+        return {}
+    
+    plateau_results = {}
+    
+    for exercise in exercise_df['Exercise'].unique():
+        exercise_data = exercise_df[exercise_df['Exercise'] == exercise].sort_values('Date')
+        
+        if len(exercise_data) < window_weeks * 7:  # Need at least 4 weeks of data
+            continue
+        
+        # Get recent data
+        recent_data = exercise_data.tail(window_weeks * 7)
+        
+        # Calculate trend
+        if len(recent_data) >= 2:
+            first_val = recent_data['Value'].iloc[0]
+            last_val = recent_data['Value'].iloc[-1]
+            improvement = last_val - first_val
+            
+            # Check if plateau (no improvement or regression)
+            is_plateau = improvement <= min_improvement
+            
+            # Calculate trend slope
+            dates_ordinal = pd.to_datetime(recent_data['Date']).map(pd.Timestamp.toordinal)
+            if len(dates_ordinal) > 1:
+                slope, _, _, _, _ = linregress(dates_ordinal, recent_data['Value'])
+            else:
+                slope = 0
+            
+            plateau_results[exercise] = {
+                'is_plateau': is_plateau,
+                'improvement': improvement,
+                'slope': slope,
+                'first_value': first_val,
+                'last_value': last_val,
+                'data_points': len(recent_data)
+            }
+    
+    return plateau_results
+
+
 def process_data(mf_file, manual_file=None):
     # Core sheets
     df_nutrition = clean_and_normalize(pd.read_excel(mf_file, sheet_name="Calories & Macros"))
