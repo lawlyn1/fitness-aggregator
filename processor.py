@@ -177,7 +177,7 @@ def process_exercise_data(mf_file):
         return None
 
 
-def detect_plateaus(exercise_df, window_weeks=4, min_improvement=0.0):
+def detect_plateaus(exercise_df, window_days=14, min_improvement=0.0):
     """Detect plateaus in exercise progression"""
     if exercise_df is None or exercise_df.empty:
         return {}
@@ -187,11 +187,11 @@ def detect_plateaus(exercise_df, window_weeks=4, min_improvement=0.0):
     for exercise in exercise_df['Exercise'].unique():
         exercise_data = exercise_df[exercise_df['Exercise'] == exercise].sort_values('Date')
         
-        if len(exercise_data) < window_weeks * 7:  # Need at least 4 weeks of data
+        if len(exercise_data) < window_days:  # Need at least window_days of data
             continue
         
         # Get recent data
-        recent_data = exercise_data.tail(window_weeks * 7)
+        recent_data = exercise_data.tail(window_days)
         
         # Calculate trend
         if len(recent_data) >= 2:

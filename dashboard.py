@@ -556,11 +556,11 @@ else:
                                 plateau_info = plateau_results[exercise]
                                 col1, col2, col3 = st.columns(3)
                                 col1.metric(exercise, "🔴 PLATEAU" if plateau_info['is_plateau'] else "🟢 PROGRESSING")
-                                col2.metric("4-Week Change", f"{plateau_info['improvement']:+.2f} kg")
+                                col2.metric("14-Day Change", f"{plateau_info['improvement']:+.2f} kg")
                                 col3.metric("Trend Slope", f"{plateau_info['slope']:.4f}")
                                 
                                 if plateau_info['is_plateau']:
-                                    st.warning(f"⚠️ {exercise} has plateaued over the last 4 weeks.")
+                                    st.warning(f"⚠️ {exercise} has plateaued over the last 14 days.")
                                 else:
                                     st.success(f"✅ {exercise} is progressing.")
                                 st.markdown("---")
