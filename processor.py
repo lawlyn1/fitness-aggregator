@@ -12,6 +12,28 @@ def clean_and_normalize(df):
     df['Date'] = pd.to_datetime(df['Date'], format='mixed', utc=True).dt.tz_convert(None).dt.normalize()
     return df
 
+
+def apply_iqr_filter(df, columns, k=1.5):
+    filtered = df.copy()
+    for column in columns:
+        if column not in filtered.columns:
+            continue
+        series = filtered[column].dropna()
+        if series.empty:
+            continue
+        q1 = series.quantile(0.25)
+        q3 = series.quantile(0.75)
+        iqr = q3 - q1
+        if iqr == 0:
+            continue
+        lower_bound = q1 - (k * iqr)
+        upper_bound = q3 + (k * iqr)
+        filtered = filtered[
+            filtered[column].isna()
+            | ((filtered[column] >= lower_bound) & (filtered[column] <= upper_bound))
+        ]
+    return filtered
+
 def calculate_step_tdee_regression(mf_file):
     df_expenditure = clean_and_normalize(pd.read_excel(mf_file, sheet_name="Expenditure"))
     df_steps = clean_and_normalize(pd.read_excel(mf_file, sheet_name="Steps"))
@@ -86,7 +108,7 @@ def calculate_baseline_metrics(mf_file):
     df_weight = df_weight.sort_values('Date')
     df_sets = df_sets.sort_values('Date')
 
-    current_tdee = df_expenditure['Expenditure'].dropna().iloc[-1]
+    current_tdee = df_expenditure['Expenditure'].dropna().tail(30).mean()
     current_weight = df_weight['Weight (kg)'].dropna().iloc[-1]
     current_daily_steps = df_steps['Steps'].dropna().tail(30).mean()
     latest_date = df_sets['Date'].max()
@@ -99,6 +121,30 @@ def calculate_baseline_metrics(mf_file):
         'current_daily_steps': current_daily_steps,
         'current_weekly_sets': current_weekly_sets,
         'current_weight': current_weight
+    }
+
+
+def initialize_manual_baseline(current_weight, current_tdee, target_intake=1550, baseline_steps=12000):
+    current_weight = float(current_weight)
+    current_tdee = float(current_tdee)
+    baseline_steps = float(baseline_steps)
+    set_mult = 5.0
+    step_mult = 0.45
+
+    daily_step_cost = (baseline_steps / 1000) * (current_weight * step_mult)
+    current_weekly_sets = 0.0
+    sedentary_base = current_tdee - daily_step_cost - ((current_weekly_sets / 7) * set_mult)
+
+    return {
+        'current_tdee': current_tdee,
+        'current_daily_steps': baseline_steps,
+        'current_weekly_sets': current_weekly_sets,
+        'current_weight': current_weight,
+        'target_intake': float(target_intake),
+        'sedentary_base': sedentary_base,
+        'avg_daily_steps_30d': baseline_steps,
+        'avg_weekly_sets_30d': current_weekly_sets,
+        'avg_daily_sets_30d': 0.0,
     }
 
 def process_data(mf_file, manual_file=None):
@@ -115,7 +161,6 @@ def process_data(mf_file, manual_file=None):
     df_weight = df_scale_weight[['Date', 'Weight (kg)']].copy()
     df_sets['Daily_Lifting_Sets'] = df_sets.select_dtypes(include='number').sum(axis=1)
     df_sets = df_sets[['Date', 'Daily_Lifting_Sets']].copy()
-    print(df_sets['Daily_Lifting_Sets'].tail())
     
     # Select specific micros to avoid bloat, but ensure we have the main culprits for water retention/digestion
     micros_subset = df_micros[['Date', 'Sodium (mg)', 'Fiber (g)', 'Water (g)']].copy()
@@ -161,5 +206,10 @@ def process_data(mf_file, manual_file=None):
     # Using Scale Weight (Weight (kg)) for daily bloat analysis, not Trend Weight
     merged_df['Next_Day_Scale_Weight'] = merged_df['Weight (kg)'].shift(-1)
     merged_df['Daily_Scale_Weight_Delta'] = merged_df['Next_Day_Scale_Weight'] - merged_df['Weight (kg)']
-    
+
+    merged_df = apply_iqr_filter(
+        merged_df,
+        ['Calories (kcal)', 'Expenditure', 'Total Steps', 'Weight (kg)', 'Relative_TDEE']
+    )
+
     return merged_df
