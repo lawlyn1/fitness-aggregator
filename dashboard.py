@@ -551,19 +551,21 @@ else:
                         
                         # Display plateau detection for selected exercises
                         st.markdown("### Plateau Detection")
+                        plateau_data = []
                         for exercise in selected_exercises:
                             if exercise in plateau_results:
                                 plateau_info = plateau_results[exercise]
-                                col1, col2, col3 = st.columns(3)
-                                col1.metric(exercise, "🔴 PLATEAU" if plateau_info['is_plateau'] else "🟢 PROGRESSING")
-                                col2.metric("14-Day Change", f"{plateau_info['improvement']:+.2f} kg")
-                                col3.metric("Trend Slope", f"{plateau_info['slope']:.4f}")
-                                
-                                if plateau_info['is_plateau']:
-                                    st.warning(f"⚠️ {exercise} has plateaued over the last 14 days.")
-                                else:
-                                    st.success(f"✅ {exercise} is progressing.")
-                                st.markdown("---")
+                                status = "🔴 PLATEAU" if plateau_info['is_plateau'] else "🟢 PROGRESSING"
+                                plateau_data.append({
+                                    "Exercise": exercise,
+                                    "Status": status,
+                                    "14-Day Change": f"{plateau_info['improvement']:+.2f} kg",
+                                    "Trend": f"{plateau_info['slope']:.4f}"
+                                })
+                        
+                        if plateau_data:
+                            plateau_df = pd.DataFrame(plateau_data)
+                            st.dataframe(plateau_df, use_container_width=True, hide_index=True)
                     
                     # Display all exercises summary
                     st.markdown("---")
