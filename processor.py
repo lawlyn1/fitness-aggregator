@@ -148,7 +148,11 @@ def initialize_manual_baseline(current_weight, current_tdee, target_intake=1550,
     }
 
 def process_exercise_data(mf_file):
-    """Process individual exercise data for progression analysis"""
+    """Process individual exercise data for progression analysis
+    
+    Extracts exercise progression data from MacroFactor export sheets including
+    Exercises - Heaviest Weight and transforms to long format for analysis.
+    """
     try:
         # Try to load exercise sheets
         df_heaviest = clean_and_normalize(pd.read_excel(mf_file, sheet_name="Exercises - Heaviest Weight"))
