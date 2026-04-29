@@ -2,3 +2,5 @@ streamlit
 pandas
 altair
 openpyxl
+scipy
+scikit-learn
