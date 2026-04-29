@@ -524,60 +524,70 @@ else:
             if exercise_df is not None and not exercise_df.empty:
                 st.markdown("### Lift Progression Analysis")
                 
-                # Exercise selection
-                exercise_list = sorted(exercise_df['Exercise'].unique())
-                selected_exercise = st.selectbox("Select Exercise", exercise_list)
+                # Filter exercises performed in last 30 days
+                latest_date = exercise_df['Date'].max()
+                thirty_days_ago = latest_date - pd.Timedelta(days=30)
+                recent_exercises = exercise_df[exercise_df['Date'] >= thirty_days_ago]['Exercise'].unique()
                 
-                if selected_exercise:
-                    exercise_data = exercise_df[exercise_df['Exercise'] == selected_exercise].sort_values('Date')
+                if len(recent_exercises) == 0:
+                    st.warning("No exercises performed in the last 30 days.")
+                else:
+                    # Exercise multi-selection
+                    exercise_list = sorted(recent_exercises)
+                    selected_exercises = st.multiselect("Select Exercises (multiple)", exercise_list, default=exercise_list[:3])
                     
-                    # Display progression chart
-                    st.subheader(f"{selected_exercise} Progression")
-                    progression_chart = alt.Chart(exercise_data).mark_line(point=True).encode(
-                        x=alt.X('Date:T', title='Date'),
-                        y=alt.Y('Value:Q', title='Weight (kg)'),
-                        tooltip=['Date:T', 'Value:Q']
-                    ).properties(width=800, height=400)
-                    st.altair_chart(progression_chart)
-                    
-                    # Display plateau detection
-                    if selected_exercise in plateau_results:
-                        plateau_info = plateau_results[selected_exercise]
+                    if selected_exercises:
+                        filtered_data = exercise_df[exercise_df['Exercise'].isin(selected_exercises)].sort_values('Date')
+                        
+                        # Display progression chart for selected exercises
+                        st.subheader("Exercise Progression")
+                        progression_chart = alt.Chart(filtered_data).mark_line(point=True).encode(
+                            x=alt.X('Date:T', title='Date'),
+                            y=alt.Y('Value:Q', title='Weight (kg)'),
+                            color=alt.Color('Exercise:N', legend=alt.Legend(title='Exercise')),
+                            tooltip=['Date:T', 'Value:Q', 'Exercise:N']
+                        ).properties(width=800, height=400)
+                        st.altair_chart(progression_chart)
+                        
+                        # Display plateau detection for selected exercises
                         st.markdown("### Plateau Detection")
-                        
-                        col1, col2, col3 = st.columns(3)
-                        col1.metric("Status", "🔴 PLATEAU DETECTED" if plateau_info['is_plateau'] else "🟢 PROGRESSING")
-                        col2.metric("4-Week Change", f"{plateau_info['improvement']:+.2f} kg")
-                        col3.metric("Trend Slope", f"{plateau_info['slope']:.4f}")
-                        
-                        if plateau_info['is_plateau']:
-                            st.warning(f"⚠️ {selected_exercise} has plateaued over the last 4 weeks. Consider changing your training approach.")
+                        for exercise in selected_exercises:
+                            if exercise in plateau_results:
+                                plateau_info = plateau_results[exercise]
+                                col1, col2, col3 = st.columns(3)
+                                col1.metric(exercise, "🔴 PLATEAU" if plateau_info['is_plateau'] else "🟢 PROGRESSING")
+                                col2.metric("4-Week Change", f"{plateau_info['improvement']:+.2f} kg")
+                                col3.metric("Trend Slope", f"{plateau_info['slope']:.4f}")
+                                
+                                if plateau_info['is_plateau']:
+                                    st.warning(f"⚠️ {exercise} has plateaued over the last 4 weeks.")
+                                else:
+                                    st.success(f"✅ {exercise} is progressing.")
+                                st.markdown("---")
+                    
+                    # Display all exercises summary
+                    st.markdown("---")
+                    st.subheader("All Exercises Status (Last 30 Days)")
+                    
+                    plateau_exercises = [ex for ex, info in plateau_results.items() if info['is_plateau'] and ex in recent_exercises]
+                    progressing_exercises = [ex for ex, info in plateau_results.items() if not info['is_plateau'] and ex in recent_exercises]
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown("#### 🔴 Plateaued Exercises")
+                        if plateau_exercises:
+                            for exercise in plateau_exercises:
+                                st.write(f"- {exercise}")
                         else:
-                            st.success(f"✅ {selected_exercise} is showing positive progression.")
-                
-                # Display all exercises summary
-                st.markdown("---")
-                st.subheader("All Exercises Status")
-                
-                plateau_exercises = [ex for ex, info in plateau_results.items() if info['is_plateau']]
-                progressing_exercises = [ex for ex, info in plateau_results.items() if not info['is_plateau']]
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown("#### 🔴 Plateaued Exercises")
-                    if plateau_exercises:
-                        for exercise in plateau_exercises:
-                            st.write(f"- {exercise}")
-                    else:
-                        st.write("No plateaued exercises detected!")
-                
-                with col2:
-                    st.markdown("#### 🟢 Progressing Exercises")
-                    if progressing_exercises:
-                        for exercise in progressing_exercises:
-                            st.write(f"- {exercise}")
-                    else:
-                        st.write("No progressing exercises detected.")
+                            st.write("No plateaued exercises detected!")
+                    
+                    with col2:
+                        st.markdown("#### 🟢 Progressing Exercises")
+                        if progressing_exercises:
+                            for exercise in progressing_exercises:
+                                st.write(f"- {exercise}")
+                        else:
+                            st.write("No progressing exercises detected.")
             else:
                 st.info("Exercise data not available. This feature requires a MacroFactor export with exercise tracking data.")
 
