@@ -226,11 +226,16 @@ else:
 
         with tab_projection:
             st.markdown("### Current State Anchor")
-            anchor_col1, anchor_col2, anchor_col3, anchor_col4 = st.columns(4)
-            anchor_col1.metric("Current Weight", f"{current_weight:.1f} kg")
-            anchor_col2.metric("Current TDEE", f"{current_tdee:.0f} kcal")
-            anchor_col3.metric("Average Daily Steps (30-day)", f"{avg_daily_steps_30d:.0f} steps")
-            anchor_col4.metric("Avg Weekly Sets (30-day)", f"{avg_weekly_sets_30d:.0f} sets")
+            if st.session_state.mode == "Manual Mode (No Export)":
+                anchor_col1, anchor_col2 = st.columns(2)
+                anchor_col1.metric("Current Weight", f"{current_weight:.1f} kg")
+                anchor_col2.metric("Current TDEE", f"{current_tdee:.0f} kcal")
+            else:
+                anchor_col1, anchor_col2, anchor_col3, anchor_col4 = st.columns(4)
+                anchor_col1.metric("Current Weight", f"{current_weight:.1f} kg")
+                anchor_col2.metric("Current TDEE", f"{current_tdee:.0f} kcal")
+                anchor_col3.metric("Average Daily Steps (30-day)", f"{avg_daily_steps_30d:.0f} steps")
+                anchor_col4.metric("Avg Weekly Sets (30-day)", f"{avg_weekly_sets_30d:.0f} sets")
             st.divider()
 
             st.markdown("### Interactive TDEE Simulator")
